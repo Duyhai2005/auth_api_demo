@@ -4,6 +4,8 @@ import uuid
 
 from datetime import datetime, timedelta, timezone
 from jwt.exceptions import InvalidTokenError
+from fastapi import HTTPException, status
+import dependencies
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
@@ -34,5 +36,26 @@ def create_access_token(user_email: str) -> str:
 def create_refresh_token(user_email: str) -> str:
     return create_token(user_email, "refresh")
 
-# def decode_token(token: str, type_token: str) -> dict:
+def decode_token(token: str, type_token: str) -> str:
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            issuer=ISSUER,
+            audience=AUDIENCE,
+            options=["sub", "type", "iss", "aud", "iat", "exp", "jti"]
+        )
+        if payload.get('type') != type_token:
+            raise dependencies.credentials_error()
+        user_email = payload.get('sub')
+    except (InvalidTokenError, KeyError):
+        raise dependencies.credentials_error()
     
+    return user_email
+
+def decode_access_token(token: str) -> str:
+    return decode_token(token=token, type_token='access')
+
+def decode_refresh_token(token: str) -> str:
+    return decode_token(token=token, type_token='refresh')
