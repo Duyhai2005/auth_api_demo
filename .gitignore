@@ -12,3 +12,7 @@ ENV/
 # Logs
 *.log
 logs/
+
+
+#####################
+fake_db.py
