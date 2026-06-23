@@ -83,8 +83,8 @@ def user_login(
 def refresh_token(
     data: token_schema.RefreshTokenRequest
 ):
-    user_email = jwt_handler.decode_refresh_token(data.refresh_token)
-    
+    payload = jwt_handler.decode_refresh_token(data.refresh_token)    
+    user_email = payload['sub']
     user = fake_users_db.get(user_email)
     if not user:
         raise HTTPException(
@@ -100,5 +100,7 @@ def refresh_token(
     )
 
 @router.post('/logout')
-def logout():
+def logout(
+    token: str = Depends(OAuth2PasswordBearer(tokenUrl="auth/login"))
+):
     pass

@@ -3,7 +3,7 @@ import os
 import uuid
 
 from datetime import datetime, timedelta, timezone
-from jwt.exceptions import InvalidTokenError
+from jwt.exceptions import InvalidTokenError, ExpiredSignatureError
 from fastapi import HTTPException, status
 import dependencies
 from dotenv import load_dotenv
@@ -39,7 +39,7 @@ def create_access_token(user_email: str) -> str:
 def create_refresh_token(user_email: str) -> str:
     return create_token(user_email, "refresh")
 
-def decode_token(token: str, type_token: str) -> str:
+def decode_token(token: str, type_token: str) -> dict:
     try:
         payload = jwt.decode(
             token,
@@ -50,15 +50,17 @@ def decode_token(token: str, type_token: str) -> str:
             options={"require" :["sub", "type", "iss", "aud", "iat", "exp", "jti"]}
         )
         if payload.get('type') != type_token:
-            raise dependencies.credentials_error()
+            raise dependencies.credentials_error(f"Token không phải {type_token} token!")
         user_email = payload.get('sub')
-    except (InvalidTokenError, KeyError):
-        raise dependencies.credentials_error()
+    except InvalidTokenError:
+        raise dependencies.credentials_error("Token không hợp lệ!")
+    except ExpiredSignatureError:
+        raise dependencies.credentials_error("Token đã hết hạn!")
     
-    return user_email
+    return payload
 
-def decode_access_token(token: str) -> str:
+def decode_access_token(token: str) -> dict:
     return decode_token(token=token, type_token='access')
 
-def decode_refresh_token(token: str) -> str:
+def decode_refresh_token(token: str) -> dict:
     return decode_token(token=token, type_token='refresh')
