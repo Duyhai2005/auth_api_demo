@@ -8,7 +8,7 @@ class UserCreate(BaseModel):
     )
     
     email: EmailStr
-    username: str = Field(max_length=30)
+    username: str = Field(min_length=8, max_length=30)
     password: str = Field(min_length=10, max_length=100, 
                           description="Password phải có ít nhất 1 kí tự đặt biệt")
     
@@ -36,9 +36,13 @@ class UserLogin(BaseModel):
     password: str
 
 
-class UserResponse(BaseModel):
+class UserPublic(BaseModel):
     id: str
     email: EmailStr
     username: str
     is_active: bool
+    role: str
     
+
+class UserInDB(UserPublic):
+    hashed_password: str

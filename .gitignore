@@ -13,6 +13,8 @@ ENV/
 *.log
 logs/
 
+__pycache__/
+
 
 #####################
-fake_db.py
+# fake_db.py

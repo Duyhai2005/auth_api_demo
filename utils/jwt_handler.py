@@ -21,8 +21,8 @@ def create_token(user_email: str, token_type: str) -> str:
         "type": token_type,
         "iat": now,
         "exp": now + timedelta(minutes=ACCESS_TOKEN_MINUTES) 
-                    if token_type is "access"
-                    else timedelta(hours=REFRESH_TOKEN_HOURS),
+                    if token_type == "access"
+                    else now + timedelta(hours=REFRESH_TOKEN_HOURS),
         "iss": ISSUER,
         "aud": AUDIENCE,
         "jti": str(uuid.uuid4())
@@ -44,7 +44,7 @@ def decode_token(token: str, type_token: str) -> str:
             algorithms=[ALGORITHM],
             issuer=ISSUER,
             audience=AUDIENCE,
-            options=["sub", "type", "iss", "aud", "iat", "exp", "jti"]
+            options={"require" :["sub", "type", "iss", "aud", "iat", "exp", "jti"]}
         )
         if payload.get('type') != type_token:
             raise dependencies.credentials_error()
