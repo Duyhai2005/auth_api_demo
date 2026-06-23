@@ -73,26 +73,33 @@ def user_login(
             detail="Tài khoản này đã bị vô hiệu hoá"
         )
         
+    refresh_token=jwt_handler.create_refresh_token(email)
+    access_token=jwt_handler.create_access_token(email)
+    
+    payload = jwt_handler.decode_refresh_token(refresh_token)
+        
+    newRT = token_schema.RefreshTokenInDB(
+        user_email=payload['sub'],
+        token_hash=password_hash.hash_password(refresh_token),
+        jti=payload['jti'],
+        expires_at=payload['exp'],
+        revoked_at=None
+    )
+    fake_token_db[newRT.jti] = newRT
+        
     return token_schema.TokenResponse(
-        refresh_token=jwt_handler.create_refresh_token(email),
-        access_token=jwt_handler.create_access_token(email),
+        refresh_token=refresh_token,
+        access_token=access_token,
         token_type='bearer'
     )
 
 @router.post('/token/refresh', response_model=token_schema.AccessTokenReponse)
 def refresh_token(
     data: token_schema.RefreshTokenRequest
-):
-    payload = jwt_handler.decode_refresh_token(data.refresh_token)    
-    user_email = payload['sub']
-    user = fake_users_db.get(user_email)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Người dùng không tồn tại"
-        )
+):   
+    db_token = jwt_handler.verify_refresh_token(data.refresh_token)
         
-    new_access_token = jwt_handler.create_access_token(user_email=user_email)
+    new_access_token = jwt_handler.create_access_token(user_email=db_token.user_email)
     
     return token_schema.AccessTokenReponse(
         access_token=new_access_token,
@@ -101,6 +108,8 @@ def refresh_token(
 
 @router.post('/logout')
 def logout(
-    token: str = Depends(OAuth2PasswordBearer(tokenUrl="auth/login"))
+    data: token_schema.RefreshTokenRequest
 ):
-    pass
+    jwt_handler.revoke_refresh_token(token=data.refresh_token)
+    
+    
