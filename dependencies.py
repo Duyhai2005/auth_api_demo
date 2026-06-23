@@ -14,7 +14,7 @@ def get_current_user(token: str = Depends(OAuth2PasswordBearer(tokenUrl="auth/lo
     user_email = jwt_handler.decode_access_token(token=token)
     
     user = fake_db.fake_users_db.get(user_email)
-    if user is None or user.get('disable') == False:
+    if user is None or user.is_active == False:
         raise credentials_error()
     else:
         return user.email

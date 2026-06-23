@@ -24,6 +24,7 @@ class UserCreate(BaseModel):
     def validate_password(cls, value: str) -> str:
         if all(char.isalnum() for char in value):
             raise ValueError("Password phải chứ ít nhất một kí tự đặc biệt")
+        return value
         
 
 class UserLogin(BaseModel):

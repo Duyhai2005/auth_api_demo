@@ -12,7 +12,7 @@ router = APIRouter(prefix= '/auth', tags=["Auth"])
 def register(
     data: user_schema.UserCreate,
     role: str
-):
+) -> user_schema.UserPublic:
     username = data.username
     user_email = data.email
     if user_email in fake_users_db:
@@ -20,14 +20,14 @@ def register(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email này đã được sử dụng!"
         )
-    if username in [user.username for user in fake_users_db.values]:
+    if username in [user.username for user in fake_users_db.values()]:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Username này đã được sử dụng!"
         )
         
     newuser = user_schema.UserInDB(
-        id=uuid.uuid4(),
+        id=str(uuid.uuid4()),
         email=data.email.strip().lower(),
         username=data.username,
         hashed_password=password_hash.hash_password(data.password),
@@ -40,20 +40,21 @@ def register(
         id=newuser.id,
         email=newuser.email,
         username=newuser.username,
-        is_active=newuser.is_active
+        is_active=newuser.is_active,
+        role=newuser.role
     )
 
-@router.post('/register/user')
+@router.post('/register/user', response_model=user_schema.UserPublic)
 def user_register(
     data: user_schema.UserCreate
 ):
-    register(data=data, role='user')
+    return register(data=data, role='user')
     
-@router.post('/register/admin')
+@router.post('/register/admin', response_model=user_schema.UserPublic)
 def admin_register(
     data: user_schema.UserCreate
 ):
-    register(data=data, role='admin')
+    return register(data=data, role='admin')
     
     
 @router.post("/login", response_model=token_schema.TokenResponse)
@@ -73,8 +74,8 @@ def user_login(
         )
         
     return token_schema.TokenResponse(
-        refresh_token=jwt_handler.create_refresh_token,
-        access_token=jwt_handler.create_access_token,
+        refresh_token=jwt_handler.create_refresh_token(email),
+        access_token=jwt_handler.create_access_token(email),
         token_type='bearer'
     )
 

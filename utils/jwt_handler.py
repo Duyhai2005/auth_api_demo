@@ -6,6 +6,9 @@ from datetime import datetime, timedelta, timezone
 from jwt.exceptions import InvalidTokenError
 from fastapi import HTTPException, status
 import dependencies
+from dotenv import load_dotenv
+
+load_dotenv()
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
