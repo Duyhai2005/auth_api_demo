@@ -3,30 +3,32 @@ from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 from schemas import token_schema, user_schema
 from utils import jwt_handler, password_hash
-from fake_db import *
 from dependencies import *
 import uuid
+
 
 router = APIRouter(prefix= '/auth', tags=["Auth"])
 
 def register(
+    db: Annotated[Session, Depends(get_db)],
     data: user_schema.UserCreate,
     role: str
 ) -> user_schema.UserPublic:
     username = data.username
     user_email = data.email
-    if user_email in fake_users_db:
+    if user_email in db.execute(select(model.User.email)).scalars():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email này đã được sử dụng!"
         )
-    if username in [user.username for user in fake_users_db.values()]:
+    
+    if username in db.execute(select(model.User.username)).scalars():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Username này đã được sử dụng!"
         )
         
-    newuser = user_schema.UserInDB(
+    newuser = model.User(
         id=str(uuid.uuid4()),
         email=data.email.strip().lower(),
         username=data.username,
@@ -34,7 +36,10 @@ def register(
         is_active=True,
         role=role
     )
-    fake_users_db[user_email] =  newuser
+    
+    db.add(newuser)
+    db.commit()
+    db.refresh(newuser)
     
     return user_schema.UserPublic(
         id=newuser.id,
@@ -59,12 +64,15 @@ def admin_register(
     
 @router.post("/login", response_model=token_schema.TokenResponse)
 def user_login(
-    form: Annotated[OAuth2PasswordRequestForm, Depends()]
+    form: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Annotated[Session, Depends(get_db)]
 ):
     email = form.username.strip().lower()
     password = form.password
     
-    user = fake_users_db.get(email)
+    user = db.execute(
+        select(model.User).where(model.User.email == email)
+    ).scalars().first()
     if not user or not password_hash.verify_password(password=password, hashed_password=user.hashed_password):
         raise credentials_error()
     if not user.is_active:
@@ -76,16 +84,6 @@ def user_login(
     refresh_token=jwt_handler.create_refresh_token(email)
     access_token=jwt_handler.create_access_token(email)
     
-    payload = jwt_handler.decode_refresh_token(refresh_token)
-        
-    newRT = token_schema.RefreshTokenInDB(
-        user_email=payload['sub'],
-        token_hash=password_hash.hash_password(refresh_token),
-        jti=payload['jti'],
-        expires_at=payload['exp'],
-        revoked_at=None
-    )
-    fake_token_db[newRT.jti] = newRT
         
     return token_schema.TokenResponse(
         refresh_token=refresh_token,
