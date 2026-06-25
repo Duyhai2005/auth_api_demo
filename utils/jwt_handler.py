@@ -8,7 +8,6 @@ import dependencies
 from dotenv import load_dotenv
 from utils import password_hash
 from schemas import token_schema
-from database import get_db
 from models import model
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update
