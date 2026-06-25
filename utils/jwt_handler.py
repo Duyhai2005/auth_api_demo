@@ -16,8 +16,6 @@ from typing import Annotated
 from fastapi import Depends
 from database import Base, engine, get_db
 
-Base.metadata.create_all(bind=engine)
-
 load_dotenv()
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
@@ -28,7 +26,7 @@ ACCESS_TOKEN_MINUTES = 15
 REFRESH_TOKEN_HOURS = 5
 
 def create_token( 
-    db: Annotated[Session, Depends(get_db)],
+    db: Session,
     user_email: str, token_type: str
 ) -> str:
     now = datetime.now(timezone.utc)
@@ -60,15 +58,21 @@ def create_token(
     
     return token
 
-def create_access_token(user_email: str) -> str:
-    return create_token(user_email, "access")
+def create_access_token(
+    db: Annotated[Session, Depends(get_db)],
+    user_email: str
+) -> str:
+    return create_token(user_email=user_email, token_type="access", db = db)
 
-def create_refresh_token(user_email: str) -> str:
-    return create_token(user_email, "refresh")
+def create_refresh_token(
+    user_email: str,
+    db: Annotated[Session, Depends(get_db)]
+) -> str:
+    return create_token(user_email=user_email, token_type="refresh", db = db)
 
 def decode_token(
-    token: str, type_token: str,
-    db: Annotated[Session, Depends(get_db)]
+    db: Session,
+    token: str, type_token: str
 ) -> dict:
     try:
         payload = jwt.decode(
@@ -94,17 +98,23 @@ def decode_token(
     
     return payload
 
-def decode_access_token(token: str) -> dict:
-    return decode_token(token=token, type_token='access')
+def decode_access_token(
+    db: Annotated[Session, Depends(get_db)],
+    token: str
+) -> dict:
+    return decode_token(token=token, type_token='access', db=db)
 
-def decode_refresh_token(token: str) -> dict:
-    return decode_token(token=token, type_token='refresh')
+def decode_refresh_token(
+    db: Annotated[Session, Depends(get_db)],
+    token: str
+) -> dict:
+    return decode_token(token=token, type_token='refresh', db = db)
 
 def verify_refresh_token(
     db: Annotated[Session, Depends(get_db)],
     token: str
-) -> str:
-    payload = decode_refresh_token(token)
+):
+    payload = decode_refresh_token(token=token, db=db)
     
     # db_token = fake_db.fake_token_db[payload['jti']]
     dbtoken = db.execute(
@@ -114,16 +124,18 @@ def verify_refresh_token(
     if not password_hash.verify_password(token, dbtoken.token_hash):
         raise dependencies.credentials_error("Token không hợp lệ!")
     
-    if dbtoken.revoked_at:
+    if dbtoken.revoke_at:
         raise dependencies.credentials_error("Token đã bị thu hổi!")
 
     
-    return dbtoken.jti
+    return dbtoken
     
 def revoke_refresh_token(db: Annotated[Session, Depends(get_db)], token: str):
-    jti = verify_refresh_token(token)
+    dbtoken = verify_refresh_token(token=token, db=db)
+    jti = dbtoken.jti
     db.execute(
         update(model.Ref_token)
         .where(model.Ref_token.jti == jti)
         .values(revoke_at=datetime.now(timezone.utc))
     )
+    db.commit()

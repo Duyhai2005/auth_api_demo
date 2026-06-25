@@ -10,7 +10,7 @@ import uuid
 router = APIRouter(prefix= '/auth', tags=["Auth"])
 
 def register(
-    db: Annotated[Session, Depends(get_db)],
+    db: Session,
     data: user_schema.UserCreate,
     role: str
 ) -> user_schema.UserPublic:
@@ -41,25 +41,21 @@ def register(
     db.commit()
     db.refresh(newuser)
     
-    return user_schema.UserPublic(
-        id=newuser.id,
-        email=newuser.email,
-        username=newuser.username,
-        is_active=newuser.is_active,
-        role=newuser.role
-    )
+    return user_schema.UserPublic.model_validate(newuser)
 
 @router.post('/register/user', response_model=user_schema.UserPublic)
 def user_register(
+    db: Annotated[Session, Depends(get_db)],
     data: user_schema.UserCreate
 ):
-    return register(data=data, role='user')
+    return register(data=data, role='user', db=db)
     
 @router.post('/register/admin', response_model=user_schema.UserPublic)
 def admin_register(
+    db: Annotated[Session, Depends(get_db)],
     data: user_schema.UserCreate
 ):
-    return register(data=data, role='admin')
+    return register(data=data, role='admin', db=db)
     
     
 @router.post("/login", response_model=token_schema.TokenResponse)
@@ -81,8 +77,8 @@ def user_login(
             detail="Tài khoản này đã bị vô hiệu hoá"
         )
         
-    refresh_token=jwt_handler.create_refresh_token(email)
-    access_token=jwt_handler.create_access_token(email)
+    refresh_token=jwt_handler.create_refresh_token(user_email=email, db=db)
+    access_token=jwt_handler.create_access_token(user_email=email, db=db)
     
         
     return token_schema.TokenResponse(
@@ -93,11 +89,12 @@ def user_login(
 
 @router.post('/token/refresh', response_model=token_schema.AccessTokenReponse)
 def refresh_token(
+    db: Annotated[Session, Depends(get_db)],
     data: token_schema.RefreshTokenRequest
 ):   
-    db_token = jwt_handler.verify_refresh_token(data.refresh_token)
+    db_token = jwt_handler.verify_refresh_token(token=data.refresh_token, db=db)
         
-    new_access_token = jwt_handler.create_access_token(user_email=db_token.user_email)
+    new_access_token = jwt_handler.create_access_token(user_email=db_token.user_email, db=db)
     
     return token_schema.AccessTokenReponse(
         access_token=new_access_token,
@@ -106,8 +103,9 @@ def refresh_token(
 
 @router.post('/logout')
 def logout(
+    db: Annotated[Session, Depends(get_db)],
     data: token_schema.RefreshTokenRequest
 ):
-    jwt_handler.revoke_refresh_token(token=data.refresh_token)
+    jwt_handler.revoke_refresh_token(token=data.refresh_token,db=db)
     
     

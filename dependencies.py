@@ -18,7 +18,7 @@ def get_current_user(
     db: Annotated[Session, Depends(get_db)],
     token: str = Depends(OAuth2PasswordBearer(tokenUrl="auth/login"))
 ) -> str:
-    payload = jwt_handler.decode_access_token(token=token)
+    payload = jwt_handler.decode_access_token(token=token, db=db)
     user_email = payload['sub']
     result_user = db.execute(
         select(model.User).where(model.User.email == user_email)

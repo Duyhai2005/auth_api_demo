@@ -8,8 +8,8 @@ class UserCreate(BaseModel):
     )
     
     email: EmailStr
-    username: str = Field(min_length=8, max_length=30)
-    password: str = Field(min_length=10, max_length=100, 
+    username: str = Field(min_length=4, max_length=30)
+    password: str = Field(min_length=5, max_length=100, 
                           description="Password phải có ít nhất 1 kí tự đặt biệt")
     
     @field_validator('username')
@@ -38,6 +38,8 @@ class UserLogin(BaseModel):
 
 
 class UserPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: str
     email: EmailStr
     username: str
