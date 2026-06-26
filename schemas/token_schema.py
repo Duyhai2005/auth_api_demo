@@ -17,7 +17,6 @@ class RefreshTokenReponse(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
-    token_type: Literal["bearer"] = "bearer"
     
     
 class RefreshTokenInDB(BaseModel):

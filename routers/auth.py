@@ -60,10 +60,10 @@ def admin_register(
     
 @router.post("/login", response_model=token_schema.TokenResponse)
 def user_login(
-    form: Annotated[OAuth2PasswordRequestForm, Depends()],
+    form: user_schema.UserLogin,
     db: Annotated[Session, Depends(get_db)]
 ):
-    email = form.username.strip().lower()
+    email = form.email.strip().lower()
     password = form.password
     
     user = db.execute(

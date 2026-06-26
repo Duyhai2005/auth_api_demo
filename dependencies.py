@@ -13,10 +13,27 @@ def credentials_error(message: str = "Không thể xác thực thông tin đăng
         detail=message,
         headers={'WWW-Authenticate' : 'Bearer'}
     )
+
+"""Lấy token nếu login bằng Authorize"""
+# def get_current_user(
+#     db: Annotated[Session, Depends(get_db)],
+#     token: str = Depends(OAuth2PasswordBearer(tokenUrl="auth/login"))
+# ) -> str:
+#     payload = jwt_handler.decode_access_token(token=token, db=db)
+#     user_email = payload['sub']
+#     result_user = db.execute(
+#         select(model.User).where(model.User.email == user_email)
+#     )
+#     existing_user = result_user.scalars().first()
+#     if not existing_user or existing_user.is_active == False:
+#         raise credentials_error()
+#     else:
+#         return existing_user.email
     
+"""Lấy token thủ công"""
 def get_current_user(
     db: Annotated[Session, Depends(get_db)],
-    token: str = Depends(OAuth2PasswordBearer(tokenUrl="auth/login"))
+    token: str
 ) -> str:
     payload = jwt_handler.decode_access_token(token=token, db=db)
     user_email = payload['sub']
