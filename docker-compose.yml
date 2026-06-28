@@ -1,0 +1,38 @@
+services:
+  backend:
+    build: .
+    container_name: auth_api_backend
+    ports:
+      - "8000:8000"
+    environment:
+      APP_NAME: "Auth API Demo"
+      DEBUG: "true"
+      JWT_SECRET_KEY: "change-me-in-production"
+      ALGORITHM: "HS256"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      DATABASE_URL: "mysql+pymysql://auth_user:auth_password@db:3306/auth_db"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:latest
+    container_name: auth_api_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: auth_db
+      MYSQL_USER: auth_user
+      MYSQL_PASSWORD: auth_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - auth_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  auth_mysql_data:

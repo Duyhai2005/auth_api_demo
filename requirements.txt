@@ -4,6 +4,6 @@ sqlalchemy
 python-dotenv
 PyMySQL
 PyJWT
-pwdlib
+pwdlib[argon2]
 pydantic[email]
 python-multipart
